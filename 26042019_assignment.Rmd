@@ -1,0 +1,219 @@
+---
+title: "Lab assignment 1: Image recognition using deep networks"
+author: "Priyanka Singhvi and Fleur Petit"
+date: "26 April 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("keras")
+library("tidyverse")
+library("knitr")
+```
+
+# Exercise one: Identifying handwritten numbers
+
+## Question 1
+
+Automatic recognition of hand-written numbers can be useful for digitalising any written source that contains numbers. There are many examples: student numbers on exams, hand-written spreadsheets, phone numbers, dates etcetera.
+
+Load the data:
+
+```{r}
+mnist <- dataset_mnist()
+```
+
+## Data preparation
+
+Use `array_reshape` and `nrow` to convert the train and test set from from 28x28 pixels to a column of 784 pixels for each image.  These should have dimensions 60000x784 and 10000x784 respectively.
+
+```{r}
+
+x_train <- array_reshape(x = mnist$train$x, dim = c(60000, 784))
+nrow(x_train)
+ncol(x_train)
+
+x_test <- array_reshape(x = mnist$test$x, dim = c(10000, 784))
+nrow(x_test)
+ncol(x_test)
+
+```
+
+Divide each variable by 255 to scale them to values between 1 and 0.
+
+```{r}
+
+# Test if dividing whole array leads to division of individual numbers.
+(test_array <- 1:30)
+(test_array/3)
+# Works
+
+x_train <- x_train/255
+x_test <- x_test/255
+
+```
+
+Use `to_categorical` to convert train and test labels to categories. Each number is represent as an array of nine 0s and one 1.
+
+```{r}
+
+y_train <- to_categorical(mnist$train$y)
+y_test <- to_categorical(mnist$test$y)
+
+# Check it out
+y_train %>% as_tibble %>% head(5) %>% kable
+
+```
+
+## Model definition
+
+The pixels of each 28x28 pixels image have been reshaped into a list of 784 values between 0-1 indicating the activation of each pixels. The list of pixels is fed to 784 input nodes that are fully connected to a 256 node hidden layer. The softmax function transforms the output of each picture to the probability of it being each of the digits 0-9.
+
+```{r}
+
+model <- keras_model_sequential()
+model %>%
+  layer_dense(units = 256, input_shape = c(784)) %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(model)
+
+```
+
+Compile the model
+
+```{r}
+
+model %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer = optimizer_rmsprop(),
+ metrics = c('accuracy')
+)
+
+```
+
+## Training and evaluation
+
+## Question 2
+
+See output at `Xs Yus`/sample where 
+
+```{r}
+history <- model %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 12,
+ verbose = 1,
+ validation_split = 0.2
+)
+```
+
+
+Make a dataframe of the history and look what is in it.
+
+```{r}
+
+history_tb <- history %>% as_tibble
+
+history_tb %>% kable
+
+```
+
+## Question 3
+
+Plot history
+
+```{r}
+
+plot(history)
+
+```
+
+## Question 4
+
+The model performs similar on training and out of training data. It generalises well.
+
+## Question 5
+
+```{r}
+
+score <- model %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+)
+
+score %>%
+  as_tibble %>%
+  kable
+
+
+```
+
+## Changin model parameters
+
+
+
+## Question 6
+
+The accuracy is not high enough for applications that can have big concequences when the highest precision is not achieved. However, for less precise tasks the accuracy may suffice. 
+
+
+## Question 7
+
+Keras dense layers use a linear activation function at default. This means that there is no threshold activation. A ReLu function does induce some kind of threshold. I.e. input below a certain value does not activate a neuron. Using this threshold allows one to ignore input that is too small to be relevant, to make the categorisation more efficient. Features of the picture that stand out will be emphasised, while features at the background will be ignored. If node activation is determined by a linear function the prominent features in the picture lack useful emphases.
+
+## Question 8
+
+```{r}
+
+model_relu <- keras_model_sequential()
+model_relu %>%
+  layer_dense(units = 256, input_shape = c(784), activation = 'relu') %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(model_relu)
+
+```
+
+```{r, results="hide"}
+model_relu %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer = optimizer_rmsprop(),
+ metrics = c('accuracy')
+)
+
+history_relu <- model_relu %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 12,
+ verbose = 1,
+ validation_split = 0.2
+)
+```
+
+```{r}
+plot(history_relu)
+```
+
+## Question 9
+
+The performance on the validation set is a lot lower than the performance on the trainingset. Probably this model does not generalise as well as the previous model.
+
+## Question 10
+
+Probably this will perform worse on the test set than the previous model. This can be expected from the performance on the validation set.
+
+```{r}
+
+score_relu <- model_relu %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+)
+
+score_relu %>%
+  as_tibble %>%
+  kable
+
+
+```
