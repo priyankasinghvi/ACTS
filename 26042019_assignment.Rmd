@@ -217,3 +217,144 @@ score_relu %>%
 
 
 ```
+
+Reshape `mnist$train$x` to a new variable (x_train) of size 60000, 28, 28, 1. Reshape `mnist$test$x` to a new variable (x_test) of size 10000, 28, 28, 1. Rescale both results to values between zero and one as before. 
+
+```{r}
+
+x_train <- array_reshape(x = mnist$train$x, dim = c(60000, 28, 28, 1))
+nrow(x_train)
+ncol(x_train)
+
+x_test <- array_reshape(x = mnist$test$x, dim = c(10000, 28, 28, 1))
+nrow(x_test)
+ncol(x_test)
+
+
+x_train <- x_train/255
+x_test <- x_test/255
+
+
+```
+
+Deep Convolutional Neural Net:
+
+  - 2 convolutional layers
+  - 32 convolutional filters into the first layer
+  - 64 convulational filters into the second
+  - 3x3 pixel filters
+  - ReLu activation
+  - Pooling to downsample size 2nd layer 2 a quarter of the pixels.
+  - Flatten to 1-dimensional array and use fully-connected layer to link network to labels.
+  
+```{r}
+model_cnn <- keras_model_sequential() %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu', input_shape = c(28,28,1)) %>%
+ layer_conv_2d(filters = 64, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_flatten() %>%
+ layer_dense(units = 128, activation = 'relu') %>%
+ layer_dense(units = 10, activation = 'softmax')
+
+summary(model_cnn)
+
+model_cnn %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer =  optimizer_adadelta(),
+ metrics = c('accuracy')
+)
+
+history_cnn <- model_cnn %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 6,
+ verbose = 1,
+ validation_split = 0.2
+)
+```
+
+## Question 11
+
+```{r}
+
+plot(history_cnn) +
+  geom_line()
+
+```
+
+## Question 12
+
+The performance on the trainingset and the validationset are very similar for this model. It is generalises better than the previous model, because it performs similar on training data and out of training data.
+
+## Question 13
+
+```{r}
+
+score_cnn <- model_cnn %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+)
+
+score_cnn %>%
+  as_tibble %>%
+  kable
+
+
+```
+
+## Question 14
+
+The accuracy is sufficient for automatic hand-written digit classification in applications for which 1 mistake in a 100 digits is acceptable. For example postal codes, phone numbers, age etcetera.
+
+## Question 15
+
+Applying dropout in the trainingstage means that nodes are dropped with a certain probability. In this manner the chances of good performance on training data and worse performance on test data (overfitting) are reduced.
+
+```{r}
+model_cnn <- keras_model_sequential() %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu', input_shape = c(28,28,1)) %>%
+ layer_conv_2d(filters = 64, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_dropout(rate = .5) %>%  
+ layer_flatten() %>%
+ layer_dense(units = 128, activation = 'relu') %>%
+ layer_dense(units = 10, activation = 'softmax')
+
+summary(model_cnn)
+
+model_cnn %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer =  optimizer_adadelta(),
+ metrics = c('accuracy')
+)
+
+history_cnn <- model_cnn %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 6,
+ verbose = 1,
+ validation_split = 0.2
+)
+
+```
+
+
+
+## Question 16
+
+```{r}
+
+plot(history_cnn) +
+  geom_line()
+
+```
+
+History of the training and validation sets are even closer than in the previous models. Training time was about 10 seconds longer on average.
+
+## Question 17
+
+The models should generalise well, the 2nd one slightly better than the first.
