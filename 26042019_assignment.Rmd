@@ -99,7 +99,7 @@ model %>% compile(
 
 See output at `Xs Yus`/sample where 
 
-```{r}
+```{r, cache = T}
 history <- model %>% fit(
  x_train, y_train,
  batch_size = 128,
@@ -176,7 +176,7 @@ summary(model_relu)
 
 ```
 
-```{r, results="hide"}
+```{r, results="hide", cache = T}
 model_relu %>% compile(
  loss = 'categorical_crossentropy',
  optimizer = optimizer_rmsprop(),
@@ -234,6 +234,9 @@ ncol(x_test)
 x_train <- x_train/255
 x_test <- x_test/255
 
+y_train <- to_categorical(mnist$train$y)
+y_test <- to_categorical(mnist$test$y)
+
 
 ```
 
@@ -247,7 +250,7 @@ Deep Convolutional Neural Net:
   - Pooling to downsample size 2nd layer 2 a quarter of the pixels.
   - Flatten to 1-dimensional array and use fully-connected layer to link network to labels.
   
-```{r}
+```{r, cache = T}
 model_cnn <- keras_model_sequential() %>%
  layer_conv_2d(filters = 32, kernel_size = c(3,3),
  activation = 'relu', input_shape = c(28,28,1)) %>%
@@ -312,7 +315,7 @@ The accuracy is sufficient for automatic hand-written digit classification in ap
 
 Applying dropout in the trainingstage means that nodes are dropped with a certain probability. In this manner the chances of good performance on training data and worse performance on test data (overfitting) are reduced.
 
-```{r}
+```{r, cache = T}
 model_cnn <- keras_model_sequential() %>%
  layer_conv_2d(filters = 32, kernel_size = c(3,3),
  activation = 'relu', input_shape = c(28,28,1)) %>%
@@ -358,3 +361,148 @@ History of the training and validation sets are even closer than in the previous
 ## Question 17
 
 The models should generalise well, the 2nd one slightly better than the first.
+
+# Exercise two: Identifying objects from images
+
+### Prepare data
+
+```{r}
+cifar10 <- dataset_cifar10()
+
+x_train <- cifar10$train$x/255
+x_test <- cifar10$test$x/255
+
+y_train <- to_categorical(cifar10$train$y)
+y_test <- to_categorical(cifar10$test$y)
+
+```
+
+## Question 18
+
+Define the model
+
+```{r, cache = T}
+
+model_im <- keras_model_sequential() %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu', input_shape = c(32,32,3)) %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_dropout(rate = .5) %>%  
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_dropout(rate = .5) %>% 
+ layer_flatten() %>%
+ layer_dense(units = 512, activation = 'relu') %>%
+ layer_dense(units = 10, activation = 'softmax')
+
+summary(model_im)
+
+model_im %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer = optimizer_rmsprop(lr = 0.0001, decay = 1e-6),
+ metrics = c('accuracy')
+)
+
+history_im <- model_im %>% fit(
+ x_train, y_train,
+ batch_size = 32,
+ epochs = 20,
+ verbose = 1,
+ validation_data = list(x_test, y_test),
+ validation_split = 0.2,
+ shuffle = TRUE 
+)
+
+```
+
+## Question 19
+
+```{r}
+
+plot(history_im) +
+  geom_line()
+
+score_im <- model_im %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+)
+
+score_im %>%
+  as_tibble %>%
+  kable
+
+```
+
+## Question 20
+
+The accuracy and loss function seem to take more epochs before they plateau. Perhaps this is because more information is used for the categorisation and it takes longer to find patterns in more information. 
+
+## Question 21
+
+Each epoch took more than 2 minutes. The network has more layers, and more imput nodes, and many more connections. More calculations have to done as more information needs to be processed. 
+
+## Question 22
+
+### Goal 
+
+Make models that predict IT neuron responses.
+
+### Experimental approach
+
+Optimise top-level functional performance of a hierarchical neural net on a image-recognition task. 
+
+### Results
+
+Directed optimisation of the model was highly correlated with IT predictivity, even though the neural data was not used to optimise the model.
+
+# Exercise three: Play time
+
+## Question 23
+
+Settings:
+
+  - Learning rate:
+    - With what rate are the weights adapted? How large is the effect of the error on each weight. You don't want the learning rate to be to high; every mistake will bring about large changes in the network. If the learning rate is very low however, it takes the network longer to adapt to the feedback.
+
+  - Activation:
+    - The activation function. Defines relation between input of a neuron and the output. A linear relation leads to an increase in output equal to increase in input. ReLu, Sigmoid, or Tanh, impose certain thresholds. The input needs to exceed this threshold to lead to activation of the neuron. Sigmoid and tanh have a upper limit for the input strength to lead to activation of the neuron, in addition to the lower threshold.   
+
+  - Regularization:
+    - Kind of smooths the model prediction. Reduces the variability of the model and consequently can prevent overfitting. 
+    
+  - Regularization rate:
+    - How much the model is regularised. 
+
+  - Problem type:
+    - Classification/regression
+  
+  - Ratio of training to test data: 
+    - How much of the data should be used for training the model and how much should be used to test the model?
+  
+  - Noise:
+    - How large should the irreducible error of the data be?
+  
+  - Batch size:
+    - The number of datapoints that are used per iteration to train the network.
+    
+  - Input features:
+    - What features do we use to categorise the x and y coordinates?
+    
+  - Hidden layers:
+    - How many hiddenlayers do we use.
+    
+  - n neurons:
+    - How many neurons does each layer have?
+
+## Question 24
+
+The minimum spiral recognition network to obtain a test loss of < .1 that I tested so far consisted of all features and a hidden layer of 3 neurons. I tweaked the learning rate on the go. At first it was 0.1, once a low loss rate was achieved I reduced the learning rate to 0.01 to create a stable network that would not change much anymore in reaction to the error.
+
+![Spiral recognition model](/images/spiral3.png)
+
+
