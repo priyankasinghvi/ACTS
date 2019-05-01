@@ -1,0 +1,620 @@
+---
+title: "Lab assignment 1: Image recognition using deep networks"
+author: "Priyanka Singhvi and Fleur Petit"
+date: "26 April 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+library("keras")
+library("tidyverse")
+library("knitr")
+```
+
+# Exercise one: Identifying handwritten numbers
+
+## Question 1
+
+Automatic recognition of hand-written numbers can be useful for digitalising any written source that contains numbers. There are many examples: student numbers on exams, hand-written spreadsheets, phone numbers, dates etcetera.
+
+Load the data:
+
+```{r load_mnist, eval = T}
+mnist <- dataset_mnist()
+```
+
+## Data preparation
+
+Use `array_reshape` and `nrow` to convert the train and test set from from 28x28 pixels to a column of 784 pixels for each image.  These should have dimensions 60000x784 and 10000x784 respectively.
+
+```{r mnist_reshape, eval = T}
+
+x_train <- array_reshape(x = mnist$train$x, dim = c(60000, 784))
+nrow(x_train)
+ncol(x_train)
+
+x_test <- array_reshape(x = mnist$test$x, dim = c(10000, 784))
+nrow(x_test)
+ncol(x_test)
+
+```
+
+Divide each variable by 255 to scale them to values between 1 and 0.
+
+```{r mnist_divide, eval = T}
+
+# Test if dividing whole array leads to division of individual numbers.
+(test_array <- 1:30)
+(test_array/3)
+# Works
+
+x_train <- x_train/255
+x_test <- x_test/255
+
+```
+
+Use `to_categorical` to convert train and test labels to categories. Each number is represent as an array of nine 0s and one 1.
+
+```{r mnist_cat, eval = T}
+
+y_train <- to_categorical(mnist$train$y)
+y_test <- to_categorical(mnist$test$y)
+
+# Check it out
+y_train %>% as_tibble %>% head(5) %>% kable
+
+```
+
+## Model definition
+
+The pixels of each 28x28 pixels image have been reshaped into a list of 784 values between 0-1 indicating the activation of each pixels. The list of pixels is fed to 784 input nodes that are fully connected to a 256 node hidden layer. The softmax function transforms the output of each picture to the probability of it being each of the digits 0-9.
+
+```{r model_define, eval = F}
+
+model <- keras_model_sequential()
+model %>%
+  layer_dense(units = 256, input_shape = c(784)) %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(model)
+
+```
+
+Compile the model
+
+```{r model_compile, eval = F}
+
+model %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer = optimizer_rmsprop(),
+ metrics = c('accuracy')
+)
+
+```
+
+
+## Training and evaluation
+
+## Question 2
+
+See output at `Xs Yus`/sample where 
+
+```{r model_history, eval = F, results = F}
+
+history <- model %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 12,
+ verbose = 1,
+ validation_split = 0.2
+)
+
+```
+
+Make a dataframe of the history and look what is in it.
+
+```{r save_history, eval = F}
+
+history %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history.csv")
+
+```
+
+## Question 3
+
+Plot history
+
+```{r model_plot}
+
+history <- read_csv("histories/history.csv")
+
+history %>% kable
+
+ggplot(history, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1)
+
+```
+
+## Question 4
+
+The model performs similar on training and out of training data. It generalises well.
+
+## Question 5
+
+```{r model_score, eval = F}
+
+model %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+) %>%
+  as_tibble %>% 
+  write_csv("scores/score.csv")
+
+```
+
+
+```{r load_score}
+
+score <- read_csv("scores/score.csv")
+
+score %>% kable
+
+
+```
+
+## Changing model parameters
+
+
+## Question 6
+
+The accuracy is not high enough for applications that can have big concequences when the highest precision is not achieved. However, for less precise tasks the accuracy may suffice. 
+
+
+## Question 7
+
+Keras dense layers use a linear activation function at default. This means that there is no threshold activation. A ReLu function does induce some kind of threshold. I.e. input below a certain value does not activate a neuron. Using this threshold allows one to ignore input that is too small to be relevant, to make the categorisation more efficient. Features of the picture that stand out will be emphasised, while features at the background will be ignored. If node activation is determined by a linear function the prominent features in the picture lack useful emphases.
+
+## Question 8
+
+```{r model_relu_define, eval = F}
+
+model_relu <- keras_model_sequential()
+model_relu %>%
+  layer_dense(units = 256, input_shape = c(784), activation = 'relu') %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(model_relu)
+
+```
+
+```{r model_relu_compile, results="hide", eval = F}
+
+model_relu %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer = optimizer_rmsprop(),
+ metrics = c('accuracy')
+)
+
+```
+
+
+```{r history_relu, eval = F, results = F}
+
+history_relu <- model_relu %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 12,
+ verbose = 1,
+ validation_split = 0.2
+)
+
+```
+
+```{r save_history_relu, eval = F}
+
+history_relu %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_relu.csv")
+
+```
+
+```{r plot_relu}
+
+history_relu <- read_csv("histories/history_relu.csv")
+
+ggplot(history_relu, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1)
+
+```
+
+## Question 9
+
+The performance on the validation set is a lot lower than the performance on the trainingset. Probably this model does not generalise as well as the previous model.
+
+## Question 10
+
+Probably this will perform worse on the test set than the previous model. This can be expected from the performance on the validation set.
+
+```{r score_relu, eval = F}
+
+score_relu <- model_relu %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+) %>%
+  as_tibble %>%
+  write_csv("scores/score_relu.csv")
+
+
+```
+
+```{r read_score_relu}
+
+score_relu <- read_csv("scores/score_relu.csv")
+
+score_relu %>% kable
+
+```
+
+Reshape `mnist$train$x` to a new variable (x_train) of size 60000, 28, 28, 1. Reshape `mnist$test$x` to a new variable (x_test) of size 10000, 28, 28, 1. Rescale both results to values between zero and one as before. 
+
+```{r data_prep_cnn}
+
+x_train <- array_reshape(x = mnist$train$x, dim = c(60000, 28, 28, 1))
+nrow(x_train)
+ncol(x_train)
+
+x_test <- array_reshape(x = mnist$test$x, dim = c(10000, 28, 28, 1))
+nrow(x_test)
+ncol(x_test)
+
+
+x_train <- x_train/255
+x_test <- x_test/255
+
+y_train <- to_categorical(mnist$train$y)
+y_test <- to_categorical(mnist$test$y)
+
+
+```
+
+Deep Convolutional Neural Net:
+
+  - 2 convolutional layers
+  - 32 convolutional filters into the first layer
+  - 64 convulational filters into the second
+  - 3x3 pixel filters
+  - ReLu activation
+  - Pooling to downsample size 2nd layer 2 a quarter of the pixels.
+  - Flatten to 1-dimensional array and use fully-connected layer to link network to labels.
+  
+```{r model_cnn, eval = F}
+model_cnn <- keras_model_sequential() %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu', input_shape = c(28,28,1)) %>%
+ layer_conv_2d(filters = 64, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_flatten() %>%
+ layer_dense(units = 128, activation = 'relu') %>%
+ layer_dense(units = 10, activation = 'softmax')
+
+summary(model_cnn)
+
+model_cnn %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer =  optimizer_adadelta(),
+ metrics = c('accuracy')
+)
+```
+
+```{r history_cnn, eval = F}
+
+history_cnn <- model_cnn %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 6,
+ verbose = 1,
+ validation_split = 0.2
+)
+
+```
+
+```{r save_history_cnn, eval = F}
+
+history_cnn %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_cnn.csv")
+
+```
+
+## Question 11
+
+```{r plot_cnn}
+
+history_cnn <- read_csv("histories/history_cnn.csv")
+
+ggplot(history_cnn, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1)
+
+```
+
+
+## Question 12
+
+The performance on the trainingset and the validationset are very similar for this model. It is generalises better than the previous model, because it performs similar on training data and out of training data.
+
+## Question 13
+
+```{r score_cnn, eval = F}
+
+score_cnn <- model_cnn %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+) %>%
+  as_tibble %>%
+  write_csv("scores/score_cnn.csv")
+
+
+```
+
+```{r read_score_cnn}
+
+score_cnn <- read_csv("scores/score_cnn.csv")
+
+score_cnn %>% kable
+
+```
+
+## Question 14
+
+The accuracy is sufficient for automatic hand-written digit classification in applications for which 1 mistake in a 100 digits is acceptable. For example postal codes, phone numbers, age etcetera.
+
+## Question 15
+
+Applying dropout in the trainingstage means that nodes are dropped with a certain probability. In this manner the chances of good performance on training data and worse performance on test data (overfitting) are reduced.
+
+```{r model_cnn2, eval = F}
+model_cnn2 <- keras_model_sequential() %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu', input_shape = c(28,28,1)) %>%
+ layer_conv_2d(filters = 64, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_dropout(rate = .5) %>%  
+ layer_flatten() %>%
+ layer_dense(units = 128, activation = 'relu') %>%
+ layer_dense(units = 10, activation = 'softmax')
+
+summary(model_cnn2)
+
+model_cnn2 %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer =  optimizer_adadelta(),
+ metrics = c('accuracy')
+)
+
+```
+
+```{r history_cnn2, eval = F}
+history_cnn2 <- model_cnn2 %>% fit(
+ x_train, y_train,
+ batch_size = 128,
+ epochs = 6,
+ verbose = 1,
+ validation_split = 0.2
+)
+
+```
+
+```{r save_history_cnn2, eval = F}
+
+history_cnn2 %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_cnn2.csv")
+
+```
+
+## Question 16
+
+```{r plot_cnn2}
+
+history_cnn2 <- read_csv("histories/history_cnn2.csv")
+
+ggplot(history_cnn2, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1)
+
+```
+
+History of the training and validation sets are even closer than in the previous models. Training time was about 10 seconds longer on average.
+
+## Question 17
+
+The models should generalise well, the 2nd one slightly better than the first.
+
+# Exercise two: Identifying objects from images
+
+### Prepare data
+
+```{r load_cifar10}
+cifar10 <- dataset_cifar10()
+```
+
+```{r, prep_cifar10}
+
+x_train <- cifar10$train$x/255
+x_test <- cifar10$test$x/255
+
+y_train <- to_categorical(cifar10$train$y)
+y_test <- to_categorical(cifar10$test$y)
+
+```
+
+## Question 18
+
+Define the model
+
+```{r model_im, eval = F}
+
+model_im <- keras_model_sequential() %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu', input_shape = c(32,32,3)) %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_dropout(rate = .5) %>%  
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_conv_2d(filters = 32, kernel_size = c(3,3),
+ activation = 'relu') %>%
+ layer_max_pooling_2d(pool_size = c(2,2)) %>%
+ layer_dropout(rate = .5) %>% 
+ layer_flatten() %>%
+ layer_dense(units = 512, activation = 'relu') %>%
+ layer_dense(units = 10, activation = 'softmax')
+
+summary(model_im)
+
+model_im %>% compile(
+ loss = 'categorical_crossentropy',
+ optimizer = optimizer_rmsprop(lr = 0.0001, decay = 1e-6),
+ metrics = c('accuracy')
+)
+
+```
+
+```{r history_im, eval = F, results = F}
+
+history_im <- model_im %>% fit(
+ x_train, y_train,
+ batch_size = 32,
+ epochs = 20,
+ verbose = 1,
+ validation_data = list(x_test, y_test),
+ validation_split = 0.2,
+ shuffle = TRUE 
+)
+
+```
+
+```{r save_history_im, eval = F}
+
+history_im %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_im.csv")
+
+```
+
+## Question 19
+
+```{r plot_im}
+
+history_im <- read_csv("histories/history_im.csv")
+
+ggplot(history_im, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1)
+
+```
+
+
+## Question 19
+
+```{r score_im, eval = F}
+
+score_im <- model_im %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+) %>%
+  as_tibble %>%
+  write_csv("scores/score_im.csv")
+
+
+```
+
+```{r read_score_im}
+
+score_im <- read_csv("scores/score_im.csv")
+
+score_im %>% kable
+
+```
+
+## Question 20
+
+The accuracy and loss function seem to take more epochs before they plateau. Perhaps this is because more information is used for the categorisation and it takes longer to find patterns in more information. 
+
+## Question 21
+
+Each epoch took more than 2 minutes. The network has more layers, and more imput nodes, and many more connections. More calculations have to done as more information needs to be processed. 
+
+## Question 22
+
+### Goal 
+
+Make models that predict IT neuron responses.
+
+### Experimental approach
+
+Optimise top-level functional performance of a hierarchical neural net on a image-recognition task. 
+
+### Results
+
+Directed optimisation of the model was highly correlated with IT predictivity, even though the neural data was not used to optimise the model.
+
+# Exercise three: Play time
+
+## Question 23
+
+Settings:
+
+  - Learning rate:
+    - With what rate are the weights adapted? How large is the effect of the error on each weight. You don't want the learning rate to be to high; every mistake will bring about large changes in the network. If the learning rate is very low however, it takes the network longer to adapt to the feedback.
+
+  - Activation:
+    - The activation function. Defines relation between input of a neuron and the output. A linear relation leads to an increase in output equal to increase in input. ReLu, Sigmoid, or Tanh, impose certain thresholds. The input needs to exceed this threshold to lead to activation of the neuron. Sigmoid and tanh have a upper limit for the input strength to lead to activation of the neuron, in addition to the lower threshold.   
+
+  - Regularization:
+    - Kind of smooths the model prediction. Reduces the variability of the model and consequently can prevent overfitting. 
+    
+  - Regularization rate:
+    - How much the model is regularised. 
+
+  - Problem type:
+    - Classification/regression
+  
+  - Ratio of training to test data: 
+    - How much of the data should be used for training the model and how much should be used to test the model?
+  
+  - Noise:
+    - How large should the irreducible error of the data be?
+  
+  - Batch size:
+    - The number of datapoints that are used per iteration to train the network.
+    
+  - Input features:
+    - What features do we use to categorise the x and y coordinates?
+    
+  - Hidden layers:
+    - How many hiddenlayers do we use.
+    
+  - n neurons:
+    - How many neurons does each layer have?
+
+## Question 24
+
+The minimum spiral recognition network to obtain a test loss of < .1 that I tested so far consisted of all features and a hidden layer of 3 neurons. I tweaked the learning rate on the go. At first it was 0.1, once a low loss rate was achieved I reduced the learning rate to 0.01 to create a stable network that would not change much anymore in reaction to the error.
+
+![Spiral recognition model](spiral.png)
+
+
