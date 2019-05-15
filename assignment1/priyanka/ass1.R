@@ -1,3 +1,14 @@
+library(tidyverse)
+library(keras)
+library(kerasR)
+library(tidyverse)
+library(knitr)
+#To prevent the local unbound variabl error
+library(tensorflow)
+install_tensorflow(version="1.12")
+mnist<-dataset_mnist()
+cifar10 <- dataset_cifar10()
+
 install_tensorflow(version = "1.12") 
 install_tensorflow(version = "1.12") install_tensorflow(version = "1.12") ##loading training and test data into separate variables
 x_train <- mnist$train$x
