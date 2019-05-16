@@ -1,6 +1,6 @@
 ---
 title: "Assignment 1"
-author: "Priyanka Singhvi and Fleur Petit"
+author: "Priyanka Singhvi (6481892) and Fleur Petit (5583837)"
 date: "15 May 2019"
 output: pdf_document
 ---
