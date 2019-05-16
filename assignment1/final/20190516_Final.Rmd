@@ -524,7 +524,7 @@ In the dropout model training loss stays above validation loss (see Figure \ref{
 
 The models generalise well, training and validation performance are very close for both models.
 
-# Question 18: What code did you use to define the model described here? 
+## Question 18: What code did you use to define the model described here? 
 
 ```{r model_cifar}
 
