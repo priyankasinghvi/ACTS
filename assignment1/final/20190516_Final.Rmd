@@ -187,7 +187,7 @@ history %>% spread(key = metric, value = value) %>% kable
 
 ## Question 4: Describe how the accuracy on the training and validation sets progress differently across epochs, and what this tells us about the generalisation of the model.
 
-In Figure \ref{fig:plot} we can see that model starts off with a better accuracy on the validation set than the training set. But the training set gradually catches up to the validation set by the $4^{th}$ epoch and shows a gentle increase. The similarity of the validation and training data indicates that the model will perform similar on out of training data as it performs on the training data. This means that the model generalises well.
+In Figure \ref{fig:linear_relu} we can see that model starts off with a better accuracy on the validation set than the training set. But the training set gradually catches up to the validation set by the $4^{th}$ epoch and shows a gentle increase. The similarity of the validation and training data indicates that the model will perform similar on out of training data as it performs on the training data. This means that the model generalises well.
 
 ## Question 5: What values do you get for the model's accuracy and loss?
 
@@ -289,7 +289,7 @@ histories %>%
 
 ```
 
-In Figure \ref{fig:linear_relu} we can see that the loss of the model with the linear activation function was consistently higher than the loss of the model with the relu activation. The loss on the training and the validation sets converge after approxiametly the $3^{th}$ epoch in the model with linear activiation. The loss of the model with relu activation diverges after the $3^{rd}$ epoch. The accuracy of the model with relu activation is a bit higher overall than that of the model with linear activation. Yet the difference is small.
+In Figure \ref{fig:linear_relu} we can see that the loss of the model with the linear activation function was consistently higher than the loss of the model with the relu activation. The loss on the training and the validation sets converge after approxiametly the $3^{rd}$ epoch in the model with linear activiation. The loss of the model with relu activation diverges after the $3^{rd}$ epoch. The accuracy of the model with relu activation is a bit higher overall than that of the model with linear activation. Yet the difference is small.
 
 We can expect the model with relu activation to perform better on the test set than the model with linear activation, with a lower loss, and perhaps a slightly higher accuracy. The difference between the test and the training loss may be a bit higher than in the previous model, as can be expected from the higher difference between validation and training loss. Because the training and the validation performance are still very close for the model with the relu activation, we can expect the model the perform similar on out of training data as on training data. Hence it generalises well.
 
