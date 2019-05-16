@@ -94,6 +94,9 @@ model %>% compile(
   optimizer = optimizer_rmsprop(),
   metrics = c('accuracy')
 )
+```
+
+```{r history_model, eval = F}
 
 history <- model %>% fit(
   x_train, y_train,
@@ -107,11 +110,17 @@ history <- model %>% fit(
 
 ## Question 2: In the output text in your console, how long did each epoch take to run?
 
-There are 12 epochs as defined in our model and on an average each epoch takes about 5s to run.
+There are 12 epochs as defined in our model and on average each epoch takes about 5s to run.
+
+```{r, echo = F}
+
+cat(str_replace(readtext(file = "epoch_time.txt")$text, '"C:/Users/Fleur/Google Drive/UU/Masters/Year_1/Quartile_4/Advanced_Topics_in_Cognitive_Science/Assignments/Assignment_1_Priyanka"', ""))
+
+```
 
 ## Question 3: Plot the training history and add it to your answers
 
-```{r save_history, eval = F}
+```{r save_history, eval = F, echo = F}
 
 history %>% 
   as_tibble %>%
@@ -119,7 +128,7 @@ history %>%
 
 ```
 
-```{r model_plot}
+```{r model_plot, echo = F}
 
 history <- read_csv("histories/history.csv")
 
@@ -128,19 +137,18 @@ history %>% kable
 ggplot(history, aes(epoch, value, colour = data)) +
   geom_point() +
   geom_smooth(se = F) +
-  facet_wrap(~metric, ncol = 1)
+  facet_wrap(~metric, ncol = 1) +
+  scale_y_continuous(limits=c(0,1))
 
 ```
 
 ## Question 4: Describe how the accuracy on the training and validation sets progress differently across epochs, and what this tells us about the generalisation of the model.
 
-From the plot above we can see that model starts off with a better accuracy on the validation set than the training set. But the training set gradually catches up to the validation set by the 4th epoch and shows a gentle increase.
-The accuracy on the validation data slightly dips in the last epoch, but is still similar to the training data.
-This indicates that the difference between the accuracy on training data and new data is small. This means that the model generalises well.
+From the plot above we can see that model starts off with a better accuracy on the validation set than the training set. But the training set gradually catches up to the validation set by the 4th epoch and shows a gentle increase. The similarity of the validation and training data indicates that the model will perform similar on out of training data as it performs on the training data. This means that the model generalises well.
 
 ## Question 5: What values do you get for the model's accuracy and loss?
 
-```{r model_score, eval = F}
+```{r model_score, eval = F, echo = F}
 
 model %>% evaluate(
  x_test, y_test,
@@ -152,7 +160,7 @@ model %>% evaluate(
 ```
 
 
-```{r load_score}
+```{r load_score, echo = F}
 
 score <- read_csv("scores/score.csv")
 
@@ -163,13 +171,13 @@ score %>% kable
   
 ## Question 6: Discuss whether this accuracy is sufficient for some uses of automatic hand-written digit classification.
 
-Though the accuracy is not high enough for sensitive applications which require high performance and accuracy, it can be safely said that it would not be a bad choice to use the same in reducing manual work such as sorting postal codes. Because in postal codes there are various levels at which this recognizer can be checked such as the postal code, street number, house number and tied to a validator system which will raise an alarm if the letter is wrongly sorted. 1 mistake in every 10 digits[approximately] is not such a bad thing after all.
+The accuracy is not high enough for sensitive applications which require high performance and accuracy. It can be safely said though, that it would not be a bad choice to use the digit recogniser for in reducing less risk-sensitive manual work such as sorting postal codes. Because in postal codes there are various levels at which this recognizer can be checked such as the postal code, street number, house number and tied to a validator system which will raise an alarm if the letter is wrongly sorted. Approximately 1 mistake in every 10 digits might not be an issue in this scenario.
   
 ## Changing the model parameters
 
 ## Question 7: How does linear activation of units limit the possible computations this model can perform?
 
-We cannot perform non-linear mappings from inputs to outputs. If we use linear activations here, we do not get enough information to classify the outputs correctly. All we get is a weighted average at the end [another linear function], so we may end up losing specific information. Moreover, if we need non-linear decision boundary for our classification we won't be able to achieve that with a linear activation of units.
+With a linear activation function it is not possible to perform non-linear mappings from inputs to outputs. If a non-linear decision boundary is required for classification, this can not be achieved with linear activation units. If we use linear activations here, we do not get enough information to classify the outputs correctly. All we get is a weighted average at the end [another linear function], so we may end up losing specific information.
 
 ```{r model_relu}
 
@@ -201,7 +209,7 @@ historyRelu <- modelRelu %>% fit(
 
 ## Question 8: Plot the training history and add it to your answers 
 
-```{r save_history_relu, eval = F}
+```{r save_history_relu, eval = F, echo = F}
 
 historyRelu %>% 
   as_tibble %>%
@@ -209,26 +217,27 @@ historyRelu %>%
 
 ```
 
-```{r plot_relu}
+```{r plot_relu, echo = F}
 
 historyRelu <- read_csv("histories/history_relu.csv")
 
 ggplot(historyRelu, aes(epoch, value, colour = data)) +
   geom_point() +
   geom_smooth(se = F) +
-  facet_wrap(~metric, ncol = 1)
+  facet_wrap(~metric, ncol = 1) +
+  scale_y_continuous(limits=c(0,1))
 
 ```
 
 ## Question 9: How does the training history differ from the previous model, for the training and validation sets? What does this tell us about the generalisation of the model?
 
-The performance on the validation set is a lower than the performance on the trainingset. However, the history of the training and validation sets are still relatively similar. The model generalizes well, perhaps the difference between test and training performance will be a little bit larger than that of the previous model.
+The loss on the validation set is higher then the loss on the training set from the $3^{th}$ epoch onwards. However, the history of the training and validation sets are still relatively similar. The model generalises well, perhaps the difference between test and training loss will be a little bit larger than that of the previous model, yet they don't differ much.
 
 ## Question 10: How does the new model's accuracy on test set classification differ from the previous model? Why do you think this is?
 
-This model scores better on the test data than the previous model. This is unsurprising, the performance on the validation set was consistently higher than that of the previous model. The difference between training and test accuracy is a little bit higher, but the difference is small.
+This model scores better on the test data than the previous model. This is unsurprising, the performance on the validation set was consistently better than that of the previous model.
 
-```{r score_relu, eval = F}
+```{r score_relu, eval = F, echo = F}
 
 scoreRelu <- modelRelu %>% evaluate(
  x_test, y_test,
@@ -240,7 +249,7 @@ scoreRelu <- modelRelu %>% evaluate(
 
 ```
 
-```{r read_score_relu}
+```{r read_score_relu, echo = F}
 
 scoreRelu <- read_csv("scores/score_relu.csv")
 
@@ -298,7 +307,7 @@ historyDeep <- modelDeep %>% fit(
 
 ## Question 11: Plot the training history and add it to your answers
 
-```{r save_history_deep, eval = F}
+```{r save_history_deep, eval = F, echo = F}
 
 historyDeep %>% 
   as_tibble %>%
@@ -306,24 +315,25 @@ historyDeep %>%
 
 ```
 
-```{r plot_deep}
+```{r plot_deep, echo = F}
 
 historyDeep <- read_csv("histories/history_deep.csv")
 
 ggplot(historyDeep, aes(epoch, value, colour = data)) +
   geom_point() +
   geom_smooth(se = F) +
-  facet_wrap(~metric, ncol = 1)
+  facet_wrap(~metric, ncol = 1) +
+  scale_y_continuous(limits=c(0,1))
 
 ```
 
 ## Question 12: How does the training history differ from the previous model, for the training and validation sets? What does this tell us about the generalisation of the model?
 
-The performance on the training set and the validation set are very similar for this model, so it is likely to perform similar on out of training data and training data. The validation performance is a bit lower, but it does not differ much.
+The performance on the training set and the validation set are very similar for this model, so it is likely to perform similar on out of training data and training data. The validation loss is a bit higher than the training loss after the $2^{nd}$ epoch, but it does not differ much. The difference is smaller than that of the previous model.
 
 ## Question 13: What values do you get for the model's accuracy and loss?
 
-```{r score_deep, eval = F}
+```{r score_deep, eval = F, echo = F}
 
 scoreDeep <- modelDeep %>% evaluate(
  x_test_new, y_test_new,
@@ -335,7 +345,7 @@ scoreDeep <- modelDeep %>% evaluate(
 
 ```
 
-```{r read_score_deep}
+```{r read_score_deep, echo = F}
 
 scoreDeep <- read_csv("scores/score_deep.csv")
 
@@ -350,11 +360,9 @@ The accuracy is fairly sufficient for automatic hand-written digit classificatio
 ## Question 15: Describe the principles of overfitting and how dropout can reduce this.
 
 Large neural nets trained on relatively small datasets can overfit the training data.
-This has the effect of the model learning the statistical noise in the training data, which results in poor performance when the model is evaluated on new data, e.g. a test dataset. Out of training error increases due to overfitting.
+This may result in the model learning the statistical noise in the training data, which results in poor performance when the model is evaluated on new data, e.g. a test dataset.
 Dropout prevents overfitting due to a layer's "over-reliance" on a few of its inputs. Because these inputs aren't always present during training (i.e. they are dropped at random), the layer learns to use all of its inputs, improving generalization.
-What you describe as "overfitting due to too many iterations" can be countered through early stopping.
 
-  
 ```{r model_deepdrop} 
 
 modelDeepDrop <- keras_model_sequential() %>%
@@ -390,7 +398,7 @@ historyDeepDrop<- modelDeepDrop %>% fit(
 
 ## Question 16: How does the training history differ from the previous (convolutional) model, for both the training and validation sets, and for the time taken to run each model epoch? 
 
-```{r save_history_deepdrop, eval = F}
+```{r save_history_deepdrop, eval = F, echo = F}
 
 historyDeepDrop %>% 
   as_tibble %>%
@@ -398,7 +406,7 @@ historyDeepDrop %>%
 
 ```
 
-```{r plot_deepdrop}
+```{r plot_deepdrop, echo = F}
 
 historyDeepDrop <- read_csv("histories/history_deepdrop.csv")
 
@@ -420,7 +428,7 @@ plot_grid(hd + theme(legend.position = "none"), hdd + theme(legend.position = "n
 
 ```
 
-In the dropout model training loss stays above validation loss. In the deep model this was not the case. Training time was about 10 seconds longer on average. 
+In the dropout model training loss stays above validation loss. In the deep model this was not the case. The training and validation loss and accuracy converge a bit quicker in the deep model than in the deep drop model. Training time was about 10 seconds longer for the deep drop model on average. 
 
 ## Question 17: What does this tell us about the generalisation of the two models?
 
@@ -486,7 +494,7 @@ historyDeepDropCifar<- modelDeepDropCifar %>% fit(
 
 ## Question 19: Execute this model fit command. After your fitting is finished, plot the training history and put it in your answers.
 
-```{r save_cifar, eval = F}
+```{r save_cifar, eval = F, echo = F}
 
 historyDeepDropCifar %>% 
   as_tibble %>%
@@ -494,7 +502,7 @@ historyDeepDropCifar %>%
 
 ```
 
-```{r plot_cifar}
+```{r plot_cifar, echo = F}
 
 historyDeepDropCifar <- read_csv("histories/history_cifar.csv")
 
@@ -505,7 +513,7 @@ ggplot(historyDeepDropCifar, aes(epoch, value, colour = data)) +
 
 ```
 
-```{r score_cifar, eval = F}
+```{r score_cifar, eval = F, echo = F}
 
 scoreDeepDropCifar <- modelDeepDropCifar %>% evaluate(
   x_test_cifar, y_test_cifar,
@@ -516,7 +524,7 @@ scoreDeepDropCifar <- modelDeepDropCifar %>% evaluate(
 
 ```
 
-```{r read_score_cifar}
+```{r read_score_cifar, echo = F}
 
 scoreDeepDropCifar <- read_csv("scores/score_cifar.csv")
 
@@ -526,12 +534,11 @@ scoreDeepDropCifar %>% kable
 
 ## Question 20: How does the training history differ from the convolutional model for digit recognition? Why do you think this is?
 
-The accuracy and loss function seem to take more epochs before they plateau. This is because it takes the model longer to figure out the patterns in the data. The training loss is slightly higher than the validation loss. This is also because of the addition of dropouts which adds some noise to the data to prevent overfitting.
+The accuracy and loss function seem to take more epochs before they plateau. This is because it takes the model longer to figure out the patterns in the data. The training loss is slightly higher than the validation loss.
 
 ## Question 21: How does the time taken for each training epoch differ from the convolutional model for digit recognition? Give several factors that may contribute to this difference
 
-Each epoch took roughly 112.45 seconds on average.
-The network is more convoluted, and has a deeper layering than the previous models. Hence it takes longer to run.
+Each epoch took roughly 160 seconds on average. The network is more convoluted, and has a deeper layering than the previous models. Hence it takes longer to run.
 
 ## Question 22: Read the research paper "Performance-optimized hierarchical models predict neural responses in higher visual cortex"
 
@@ -540,7 +547,11 @@ Available from: http://www.pnas.org/content/pnas/111/23/8619.full.pdf. Write a s
 ### Problem: 
 
 Diverse tunings of neurons in the inferior temporal cortex are difficult to characterize.
-Objective: Modelling approach to yield a quantitatively accurate model of the Inferior Temporal Cortex. The task is to find a neural network model that matches or maybe even exceeds human performance on object recognition tasks. 
+
+
+### Objective: 
+
+Modelling approach to yield a quantitatively accurate model of the Inferior Temporal Cortex. The task is to find a neural network model that matches or maybe even exceeds human performance on object recognition tasks. 
 
 ### Approach:
 
@@ -609,25 +620,34 @@ The thickness of the connections signify their weights.
 
 ## Question 24: What is the minimum you need in the network to classify the spiral shape with a test set loss of below 0.1? 
 
-  .	Learning rate: 0.01
-  .	Activation: Sigmoid
-  .	Regularization: L2
-  .	Regularization rate: 0 (default)
-  .	Problem type: Classification
-  .	Ratio of training to test data: 90:10
-  .	Noise: 0 (default)
-  .	Batch size: 1
+.	Learning rate: 0.01
+
+.	Activation: Sigmoid
+
+.	Regularization: L2
+
+.	Regularization rate: 0 (default)
+
+.	Problem type: Classification
+
+.	Ratio of training to test data: 90:10
+
+.	Noise: 0 (default)
+
+.	Batch size: 1
   
-    - 1 [Mini batch; gives more improved accuracy but is 
+  - 1 [Mini batch; gives more improved accuracy but is 
     computationally more expensive] Most of the parameters 
     have been left as default as the question asks for the 
     "minimum" needed in the network to classify the data. 
     Before the 230th epoch, we have already achieved Test 
     loss of below 0.1 as asked in the question.
   
-  .	Input features: X1, X2, Sin(X1) and Sin(X2)
-  .	Hidden layers: 1
-  .	n neurons: 3 neurons 
+.	Input features: X1, X2, Sin(X1) and Sin(X2)
+
+.	Hidden layers: 1
+
+.	n neurons: 3 neurons 
 
 ![Spiral recognition model](spiral.png)
 
