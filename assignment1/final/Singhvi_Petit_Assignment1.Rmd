@@ -1,0 +1,779 @@
+---
+title: "Assignment 1"
+author: "Priyanka Singhvi (6481892) and Fleur Petit (5583837)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = F)
+library("keras")
+library("tidyverse")
+library("knitr")
+library("readtext")
+library("cowplot")
+library("papeR")
+library("xtable")
+
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+
+old <- theme_set(theme_bw())
+
+history <- read_csv("histories/history.csv")
+historyRelu <- read_csv("histories/history_relu.csv")
+historyDeep <- read_csv("histories/history_deep.csv")
+historyDeepDrop <- read_csv("histories/history_deepdrop.csv")
+historyDeepDropCifar <- read_csv("histories/history_cifar.csv")
+
+h <- history %>%
+  mutate(model = "model linear")
+
+hr <- historyRelu %>%
+  mutate(model = "model relu")
+
+hd <- historyDeep %>%
+  mutate(model = "deep model")
+
+hdd <- historyDeepDrop %>%
+  mutate(model = "deep model drop")
+
+hc <- historyDeepDropCifar %>%
+  mutate(model = "model cifar")
+
+histories <- bind_rows(h, hr, hd, hdd, hc)
+
+```
+
+# Exercise 1: Identifying handwritten numbers
+
+## Question 1: Can you think of another application where automatic recognition of hand-written numbers would be useful?
+
+An application where automatic recognition of hand-written numbers would be useful is in sorting mail/posts at central or sub-central postal facilities which allow faster sorting of packages and posts.
+Another application is for audits where the documents to be audited are mostly handwritten. It would be easier to use a digit recognizer to convert them to computable digits without much human effort.
+
+
+## Download mnist
+
+```{r load_data}
+
+mnist <- dataset_mnist()
+
+```
+
+## Data preparation
+
+New variables called x_train and x_test, y_train and y_test to avoid overwriting the original images. 
+
+```{r rename_vars}
+
+x_train <- mnist$train$x
+y_train <- mnist$train$y
+x_test  <- mnist$test$x
+y_test  <- mnist$test$y
+
+```
+
+Flattening training and test data to remove spatial relationships.
+
+```{r reshape}
+
+x_train <- array_reshape(x_train, c(nrow(x_train), 784))
+x_test <-  array_reshape(x_test, c(nrow(x_test), 784))
+dim(x_train)
+dim(x_test)
+
+```
+Rescaling the above from grayscale to floating point between 0 and 1.
+
+```{r rescale}
+
+x_train <- x_train /255
+x_test  <- x_test/255
+
+```
+
+Categorical variables encoded as binary vectors.
+
+```{r categorical}
+
+y_train <- to_categorical(y_train, 10)
+y_test  <- to_categorical(y_test, 10)
+
+```
+
+Check to see if it worked as expected.
+
+```{r check_out}
+
+y_train %>% as_tibble %>% head(5) %>% kable
+
+```
+
+
+## Model definition
+
+Defining, compiling and fitting the model.
+
+```{r model}
+
+model <- keras_model_sequential()
+
+model %>%
+  layer_dense(units = 256, input_shape = c(784)) %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(model)
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+
+```
+
+```{r history_model, eval = F}
+
+history <- model %>% fit(
+  x_train, y_train,
+  batch_size =128,
+  epochs = 12,
+  verbose = 1,
+  validation_split = 0.2
+)
+
+```
+
+## Question 2: In the output text in your console, how long did each epoch take to run?
+
+Each epoch took approximately 5s to run.
+
+```{r, echo = F, size = "scriptsize"}
+
+cat(str_replace(readtext(file = "epoch_time.txt")$text, '"C:/Users/Fleur/Google Drive/UU/Masters/Year_1/Quartile_4/Advanced_Topics_in_Cognitive_Science/Assignments/Assignment_1_Priyanka"', ""))
+
+```
+
+## Question 3: Plot the training history and add it to your answers
+
+See the plot at "model linear" in Figure \ref{fig:linear_relu} (p. 5).
+
+```{r save_history, eval = F, echo = F}
+
+history %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history.csv")
+
+```
+
+Table 1: Table of the history of the model with the linear activation function.
+
+```{r model_plot, fig.cap = "Plot of the history of the model \\label{fig:plot}", echo = F, eval = F}
+
+ggplot(history, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1) +
+  scale_y_continuous(limits=c(0,1))
+
+```
+
+```{r print_history, echo = F}
+
+history <- read_csv("histories/history.csv")
+
+history %>% spread(key = metric, value = value) %>% kable
+
+```
+
+
+## Question 4: Describe how the accuracy on the training and validation sets progress differently across epochs, and what this tells us about the generalisation of the model.
+
+In Figure \ref{fig:linear_relu} we can see that model starts off with a better accuracy on the validation set than the training set. But the training set gradually catches up to the validation set by the $4^{th}$ epoch and shows a gentle increase. The similarity of the validation and training data indicates that the model will perform similar on out of training data as it performs on the training data. This means that the model generalises well.
+
+## Question 5: What values do you get for the model's accuracy and loss?
+
+```{r model_score, eval = F, echo = F}
+
+model %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+) %>%
+  as_tibble %>% 
+  write_csv("scores/score.csv")
+
+```
+
+
+```{r load_score, echo = F}
+
+score <- read_csv("scores/score.csv")
+
+score %>% kable
+
+
+```
+  
+## Question 6: Discuss whether this accuracy is sufficient for some uses of automatic hand-written digit classification.
+
+The accuracy is not high enough for sensitive applications which require high performance and accuracy, such as money transactions. It can be safely said though, that it would not be a bad choice to use the digit recogniser for in reducing less risk-sensitive manual work such as sorting postal codes. Because in postal codes there are various levels at which this recognizer can be checked such as the postal code, street number, house number. These different sources of information can be tied to a validator system which will raise an alarm if there is contradictory information. The mistake rate of approximately one in ten can be appropiately dealt with in this manner.
+
+## Changing the model parameters
+
+## Question 7: How does linear activation of units limit the possible computations this model can perform?
+
+With a linear activation function it is not possible to perform non-linear mappings from inputs to outputs. If a non-linear decision boundary is required for classification, this can not be achieved with linear activation units. If we use linear activations here, we do not get enough information to classify the outputs correctly. All we get is a weighted average at the end [another linear function], so we may end up losing specific information.
+
+```{r model_relu}
+
+modelRelu <- keras_model_sequential()
+modelRelu %>%
+  layer_dense(units = 256, activation ='relu', input_shape = c(784)) %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(model)
+
+```
+
+```{r fit_relu, eval = F}
+
+modelRelu %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+
+historyRelu <- modelRelu %>% fit(
+  x_train, y_train,
+  batch_size =128,
+  epochs = 12,
+  verbose = 1,
+  validation_split = 0.2
+)
+
+```
+
+## Question 8: Plot the training history and add it to your answers 
+
+See "model relu", Figure \ref{fig:linear_relu}.
+
+```{r save_history_relu, eval = F, echo = F}
+
+historyRelu %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_relu.csv")
+
+```
+
+```{r plot_relu, fig.cap = "Plot of the history of the model with aReLuactivation function for the first layer. \\label{fig:plot_relu}", echo = F, eval = F}
+
+historyRelu <- read_csv("histories/history_relu.csv")
+
+ggplot(historyRelu, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1) +
+  scale_y_continuous(limits=c(0,1))
+
+```
+
+## Question 9: How does the training history differ from the previous model, for the training and validation sets? What does this tell us about the generalisation of the model?
+
+```{r linear_relu, fig.cap = "Comparison of the model with a linear activation for the first layer and the model withReLuactivation. \\label{fig:linear_relu}", echo = F}
+
+histories %>%
+  filter(model == c("model linear","model relu")) %>%
+  ggplot(aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_grid(metric ~ model) +
+  scale_y_continuous(limits=c(0,1))
+
+```
+
+In Figure \ref{fig:linear_relu}, we can see that the loss of the model with the linear activation function was consistently higher than the loss of the model with theReLuactivation. The loss on the training and the validation sets converge after approxiametly the $3^{rd}$ epoch in the model with linear activiation. The loss on training and validation sets of the model withReLuactivation diverges after the $3^{rd}$ epoch. The accuracy of the model withReLuactivation is a bit higher overall than that of the model with linear activation. Yet the difference is small.
+
+We can expect the model withReLuactivation to perform better on the test set than the model with linear activation, with a lower loss, and perhaps a slightly higher accuracy. The difference between the test and the training loss may be a bit higher than in the previous model, as can be expected from the higher difference between validation and training loss. Because the training and the validation performance are still very close for the model with theReLuactivation, we can expect the model the perform similar on out of training data as on training data. Hence it generalises well.
+
+## Question 10: How does the new model's accuracy on test set classification differ from the previous model? Why do you think this is?
+
+This model scores better on the test data than the previous model. This is unsurprising, the performance on the validation set was consistently better than that of the previous model (see Figure \ref{fig:linear_relu}).
+
+```{r score_relu, eval = F, echo = F}
+
+scoreRelu <- modelRelu %>% evaluate(
+ x_test, y_test,
+ verbose = 0
+) %>%
+  as_tibble %>%
+  write_csv("scores/score_relu.csv")
+
+
+```
+
+```{r read_score_relu, echo = F}
+
+scoreRelu <- read_csv("scores/score_relu.csv")
+
+scoreRelu %>% kable
+
+```
+
+## Deep convolutional networks
+
+```{r model_deep}
+
+x_train_new = mnist$train$x
+x_test_new = mnist$test$x
+y_train_new = mnist$train$y
+y_test_new = mnist$test$y
+
+x_train_new <- array_reshape(x_train_new, c(nrow(x_train_new), 28, 28, 1))
+dim(x_train_new)
+x_test_new <- array_reshape(x_test_new, c(nrow(x_test_new), 28, 28, 1))
+dim(x_test_new)
+x_train_new = x_train_new/255
+x_test_new = x_test_new/255
+
+y_train_new <- to_categorical(y_train_new)
+y_test_new  <- to_categorical(y_test_new)
+
+modelDeep <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),activation = 'relu', 
+                input_shape = c(28,28,1)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3,3),activation = 'relu') %>%
+  layer_max_pooling_2d(pool_size = c(2,2)) %>%
+  layer_flatten() %>%
+  layer_dense(units = 128, activation = 'relu') %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(modelDeep)
+
+modelDeep %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_adadelta(),
+  metrics = c('accuracy')
+)
+
+```
+
+```{r fit_deep, eval = F}
+
+historyDeep <- modelDeep %>% fit(
+  x_train_new, y_train_new,
+  batch_size = 128,
+  epochs = 6,
+  verbose = 1,
+  validation_split = 0.2
+)
+
+```
+
+## Question 11: Plot the training history and add it to your answers
+
+See "deep model", Figure \ref{fig:relu_deep}.
+
+```{r save_history_deep, eval = F, echo = F}
+
+historyDeep %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_deep.csv")
+
+```
+
+```{r plot_deep, fig.cap = "History of the deep model. \\label{fig:deep}", echo = F, eval = F}
+
+historyDeep <- read_csv("histories/history_deep.csv")
+
+ggplot(historyDeep, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1) +
+  scale_y_continuous(limits=c(0,1))
+
+```
+
+## Question 12: How does the training history differ from the previous model, for the training and validation sets? What does this tell us about the generalisation of the model?
+
+```{r relu_deep, fig.cap = "Comparison of the model withReLuactivation and the same model with extra 2 extra convolutional layers, and pooling and flattening. \\label{fig:relu_deep}", echo = F}
+
+histories %>%
+  filter(model == c("deep model","model relu")) %>%
+  ggplot(aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_grid(metric ~ model) +
+  scale_y_continuous(limits=c(0,1))
+
+```
+
+Overall, the performance of the deep model improved quicker than that of the simpler model (see Figure \ref{fig:relu_deep}). The performance on the training set and the validation set converged quickly for the deep model, and end up being very similar, so the model is likely to perform similar on out of training data and training data. The validation loss is a bit higher than the training loss after the $2^{nd}$ epoch, but it does not differ much. The difference is smaller than that of the previous model. It probably generalises a tiny bit better, i.e. training and test difference might be tiny bit smaller than it was for the simpler model.
+
+## Question 13: What values do you get for the model's accuracy and loss?
+
+```{r score_deep, eval = F, echo = F}
+
+scoreDeep <- modelDeep %>% evaluate(
+ x_test_new, y_test_new,
+ verbose = 0
+) %>%
+  as_tibble %>%
+  write_csv("scores/score_deep.csv")
+
+
+```
+
+```{r read_score_deep, echo = F}
+
+scoreDeep <- read_csv("scores/score_deep.csv")
+
+scoreDeep %>% kable
+
+```
+
+## Question 14: Discuss whether this accuracy is sufficient for some uses of automatic hand-written digit classification.
+
+The accuracy is fairly sufficient for automatic hand-written digit classification in applications where 1 mistake in a 100 digits is doable and can be checked manually further on. For example: in postal codes there are multiple levels of check involved where there is not just a postal code, but also house number, street number etc.
+
+## Question 15: Describe the principles of overfitting and how dropout can reduce this.
+
+Large neural nets trained on relatively small datasets can overfit the training data.
+This may result in the model learning the statistical noise in the training data, which results in poor performance when the model is evaluated on new data, e.g. a test dataset.
+Dropout prevents overfitting due to a layer's "over-reliance" on a few of its inputs. Because these inputs aren't always present during training (i.e. they are dropped at random), the layer learns to use all of its inputs, improving generalisation.
+
+```{r model_deepdrop} 
+
+modelDeepDrop <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),activation = 'relu', 
+                input_shape = c(28,28,1)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3,3),activation = 'relu') %>%
+  layer_max_pooling_2d(pool_size = c(2,2)) %>%
+  layer_dropout(rate = 0.25) %>%
+  layer_flatten() %>%
+  layer_dense(units = 128, activation = 'relu') %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(modelDeepDrop)
+
+modelDeepDrop %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_adadelta(),
+  metrics = c('accuracy')
+)
+
+```
+
+```{r history_deepdrop, eval = F}
+
+historyDeepDrop<- modelDeepDrop %>% fit(
+  x_train_new, y_train_new,
+  batch_size =128,
+  epochs = 6,
+  verbose = 1,
+  validation_split = 0.2
+)
+
+```
+
+## Question 16: How does the training history differ from the previous (convolutional) model, for both the training and validation sets, and for the time taken to run each model epoch? 
+
+```{r save_history_deepdrop, eval = F, echo = F}
+
+historyDeepDrop %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_deepdrop.csv")
+
+```
+
+```{r plot_deepdrop, echo = F, eval = F}
+
+historyDeepDrop <- read_csv("histories/history_deepdrop.csv")
+
+hd <- ggplot(historyDeep, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1) +
+  ggtitle("Deep model") 
+
+hdd <- ggplot(historyDeepDrop, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1) +
+  ggtitle("Deep drop model") 
+
+legend <- get_legend(hdd)
+
+plot_grid(hd + theme(legend.position = "none"), hdd + theme(legend.position = "none"), legend, nrow = 1)
+
+```
+
+```{r deep_drop, fig.cap = "Comparison of the deep model with and without dropout. \\label{fig:deep_drop}", echo = F}
+
+histories %>%
+  filter(model == c("deep model","deep model drop")) %>%
+  ggplot(aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_grid(metric ~ model) +
+  scale_y_continuous(limits=c(0,1))
+
+```
+
+In the dropout model training loss stays above validation loss (see Figure \ref{fig:deep_drop}). In the deep model this was not the case. The training and validation loss and accuracy converge a bit quicker in the deep model than in the deep drop model. Training time was about 10 seconds longer for the deep drop model on average. 
+
+## Question 17: What does this tell us about the generalisation of the two models?
+
+The models generalise well, training and validation performance are very close for both models.
+
+## Question 18: What code did you use to define the model described here? 
+
+```{r model_cifar}
+
+cifar10 <- dataset_cifar10()
+
+x_train_cifar <- cifar10$train$x
+x_test_cifar <- cifar10$test$x
+y_train_cifar <- cifar10$train$y
+y_test_cifar <- cifar10$test$y
+
+
+x_train_cifar <- x_train_cifar/255
+x_test_cifar <- x_test_cifar/255
+y_train_cifar <- to_categorical(y_train_cifar, 10)
+y_test_cifar <- to_categorical(y_test_cifar, 10)
+
+
+modelDeepDropCifar <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),activation = 'relu', 
+                input_shape = c(32, 32, 3), padding = 'same') %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),activation = 'relu') %>%
+  layer_max_pooling_2d(pool_size = c(2,2)) %>%
+  layer_dropout(rate = 0.25) %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),activation = 'relu', 
+                padding = 'same') %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),activation = 'relu') %>%
+  layer_max_pooling_2d(pool_size = c(2,2)) %>%
+  layer_dropout(rate = 0.25) %>%
+  layer_flatten() %>%
+  layer_dense(units = 512, activation = 'relu') %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 10, activation = 'softmax')
+
+summary(modelDeepDropCifar)
+
+modelDeepDropCifar %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(lr = 0.0001, decay = 1e-6),
+  metrics = c('accuracy')
+)
+```
+
+```{r fit_cifar, eval = F}
+
+historyDeepDropCifar<- modelDeepDropCifar %>% fit(
+  x_train_cifar, y_train_cifar,
+  batch_size =32,
+  epochs = 20,
+  verbose = 1,
+  validation_data = list(x_test_cifar, y_test_cifar),
+  validation_split = 0.2,
+  shuffle = TRUE 
+  # The data in the cifar set is not ordered. 
+  # So setting a shuffle = TRUE is void and 
+  # has no effect on the accuracy of the 
+  # said model.
+)
+
+```
+
+## Question 19: Execute this model fit command. After your fitting is finished, plot the training history and put it in your answers.
+
+See "model cifar", Figure \ref{fig:drop_cifar}.
+
+```{r save_cifar, eval = F, echo = F}
+
+historyDeepDropCifar %>% 
+  as_tibble %>%
+  write_csv(path = "histories/history_cifar.csv")
+
+```
+
+```{r plot_cifar, echo = F, eval = F}
+
+historyDeepDropCifar <- read_csv("histories/history_cifar.csv")
+
+ggplot(historyDeepDropCifar, aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~metric, ncol = 1, scales = "free")
+
+```
+
+```{r drop_cifar, fig.cap = "Comparison of the deep convolutional model with dropout for digit recognition and the deep convolutional model for image recognition. \\label{fig:drop_cifar}", echo = F}
+
+histories %>%
+  filter(model == c("deep model drop","model cifar")) %>%
+  ggplot(aes(epoch, value, colour = data)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_grid(metric ~ model)
+
+```
+
+```{r score_cifar, eval = F, echo = F}
+
+scoreDeepDropCifar <- modelDeepDropCifar %>% evaluate(
+  x_test_cifar, y_test_cifar,
+  verbose = 0
+) %>%
+  as_tibble %>%
+  write_csv("scores/score_cifar.csv")
+
+```
+
+```{r read_score_cifar, echo = F}
+
+scoreDeepDropCifar <- read_csv("scores/score_cifar.csv")
+
+scoreDeepDropCifar %>% kable
+
+```
+
+
+## Question 20: How does the training history differ from the convolutional model for digit recognition? Why do you think this is?
+
+The accuracy and loss function seem to take more epochs before they plateau for the cifar model than for the digit recogniser (see Figure \ref{fig:drop_cifar}). This is because it takes the model longer to figure out the patterns in the data.
+
+## Question 21: How does the time taken for each training epoch differ from the convolutional model for digit recognition? Give several factors that may contribute to this difference
+
+Each epoch took roughly 160 seconds on average. The network is more convoluted, and has a deeper layering than the previous models. Hence it takes longer to run.
+
+## Question 22: Read the research paper "Performance-optimized hierarchical models predict neural responses in higher visual cortex"
+
+Available from: http://www.pnas.org/content/pnas/111/23/8619.full.pdf. Write a short (~500 word) summary of the experimental approach and results. 
+
+### Problem: 
+
+Varied tunings of neurons in the inferior temporal cortex are difficult to characterize.
+
+### Objective: 
+
+Modelling approach to yield a quantitatively accurate model of the Inferior Temporal Cortex. The task is to find a neural network model that matches or maybe even exceeds human performance on object recognition tasks. 
+
+### Approach:
+
+By means of array electrophysiology responses of 168 ITC (inferior temporal cortex) neurons to images from a set of 5760 photorealistic 3d objects in cluttered backgrounds. The backgrounds were randomly selected natural scenes, to ensure that the background-content is uncorrelated with the object.
+Then high throughput computation was used to evaluate other neural network models on the same image set measuring categorisation performance as well as ITC neural predictivity. 
+
+Categorisation performance was measured on Support Vector Machines Linear Classifier and cross validation testing was done on them. To assess the neural predictivity, a linear regression for each target ITC neuron site was used. The linear regression was mapped to identify a synthetic neuron built on linear weighting of the model outputs that would resemble or match that space on fixed sample images. The mapping was then tested for response predictions against actual neural site outputs on novel images. 
+
+Models were built from the large parameter space of CNN's. The models were found to approximate the general retinotopic structure of the ventral system through spatial complexity in any region of vision identical to other places. The CNN layers were stacked hierarchically to create deep neural networks.
+
+### Results: 
+
+The results show that there is optimisation involved to directly guide neural mechanisms. A model with perfect neural predictivity in Inferior Temporal Cortex will exhibit high performance because the ITC itself does. The converse being true is demonstrated within a biologically plausible model class which is made by combining high throughput computational and electrophysiology techniques to explore biologically plausible hierarchical neural network models and then measure them against V4 and ITC. This is also used to show that there is a strong correlation between a model's performance on high variation object recognition and translating it to predict individual ITC neuron firings. It is also proved that top down performance thresholds directly shape the intermediary visual representations.
+
+Category ideal observer models were significantly less predictive of ITC responses than the high performing model constructed via hierarchical modular optimisation. This suggests that high performance on category selectivity does not suffice to explain ITC responses. The results suggest that further structural constraints on the shaping of the visual cortex are imposed by the hierarchical network architecture.
+
+A model with perfect neural predictivity in inferior temporal cortex will exhibit high performance because the ITC itself does. The converse being true is demonstrated within a biologically plausible model class which is made by combining high throughput computational and electrophysiology techniques to explore biologically plausible hierarchical neural network models and then measure them against V4 and ITC. This is also used to show that there is a strong correlation between a model's performance on high variation object recognition and translating it to predict individual ITC neuron firings. It is moreover proven that top down performance thresholds directly shape the intermediary visual representations.
+
+## Question 23: Play around with these settings and see how they affect your ability to learn classification of different data sets. 
+
+Write down what you found and how you interpret the effects of these settings. Depending on your inclination and how long the other questions took you, this may be 10 minutes work or an hour. 
+
+### Findings:
+
+We need to classify a set of data points based on their coordinates in a 2d image. The data set consists of different coordinates classified as blue or orange. Our objective here is to create a neural network that succesfully predicts at what coordinates datapoints should be labeled "blue", and at what coordinates should be labeled "orange." Deviation from the correct labeling is used to set the weights of the network.
+
+The coordinates and transformations are connected to hidden layers. The connections between layers start off as equally weighted. Each of the inputs is connected to neurons in the hidden layer by a weighted connection, which can be adjusted/manipulated to create the learning that we want. The thickness of the connections signify their weights. 
+
+## Settings:
+.	Learning rate:
+
+  -	With what rate are the weights adapted? How large is the effect of the error on each weight. You don't want the learning rate to be too high; every mistake will bring about large changes in the network. If the learning rate is very low however, it takes the network longer to adapt to the feedback.
+  
+.	Activation:
+
+  -	The activation function defines the relation between input of a neuron and the output. A linear relation leads to an increase in output equal to increase in input. ReLu, Sigmoid, or Tanh, impose certain thresholds. The input needs to exceed this threshold to lead to activation of the neuron. Sigmoid and tanh have a upper limit for the input strength to lead to activation of the neuron, in addition to the lower threshold.
+
+.	Regularization:
+
+  -	Kind of smooths the model prediction. Reduces the variability of the model and consequently can prevent overfitting.
+  
+.	Regularization rate:
+  
+  -	How much the model is regularised.
+
+.	Problem type:
+    
+  -	Classification/regression
+  
+.	Ratio of training to test data:
+
+  -	How much of the data should be used for training the model and how much should be used to test the model?
+
+.	Noise:
+
+  -	How large should the irreducible error of the data be?
+
+.	Batch size:
+
+  -	The number of datapoints that are used per iteration to train the network. The smaller, the more accurate, yet it takes longer.
+
+.	Input features:
+
+  -	What features do we use to categorise the x and y coordinates?
+  
+.	Hidden layers:
+
+  -	How many hidden layers do we use.
+
+.	n neurons:
+
+  - How many neurons does each layer have?
+
+## Question 24: What is the minimum you need in the network to classify the spiral shape with a test set loss of below 0.1?
+
+See Figure 5.
+
+These are the settings that we used:
+
+.	Learning rate: 0.01
+
+.	Activation: Sigmoid
+
+.	Regularization: L2
+
+.	Regularization rate: 0 (default)
+
+.	Problem type: Classification
+
+.	Ratio of training to test data: 90:10
+
+.	Noise: 0 (default)
+
+.	Batch size: 1
+  
+  - 1 [Mini batch; gives more improved accuracy but is 
+    computationally more expensive] Most of the parameters 
+    have been left as default as the question asks for the 
+    "minimum" needed in the network to classify the data. 
+    Before the 230th epoch, we have already achieved Test 
+    loss of below 0.1 as asked in the question.
+  
+.	Input features: X1, X2, Sin(X1) and Sin(X2)
+
+.	Hidden layers: 1
+
+.	n neurons: 3 neurons 
+
+![Spiral recognition model](spiral.png)
+
+
+ 
